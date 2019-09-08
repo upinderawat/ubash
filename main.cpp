@@ -3,39 +3,56 @@
 #include <string.h>
 #include "utils.h"
 #include "execute_cmd.h"
-#define MAX_BF 10000
-#define MAX_CMD 10
+#include <sys/types.h>//pid_t
+#include <sys/wait.h>//wait_pid
+#define MAX_BF 1000
+#define MAX_CMD 50
 using namespace std;
 
 int main(int argc, char const *argv[]){
 	//load config files
-	char input_buffer[MAX_BF];
-	if(read(STDIN_FILENO, input_buffer, MAX_BF) ==-1) perror("Read Error");
-	//tokenize
-	char * commands[MAX_CMD];
-	int i=0;
-	commands[i] = strtok(input_buffer, "|");
-	while(commands[i] != NULL){
-		commands[++i] = strtok(NULL, "|");
-	}
-	if(i > 1){
-		//launch in pipe
-	}
-	else{
-		for (int j = 0; j < i; ++j){
-			printf("%s\n", trim(commands[j]));
-			char* tokens[MAX_CMD];
-			int k=0;
-			tokens[k] = strtok(commands[j], " ");
-			while(tokens[k] != NULL){
-				tokens[++k] = strtok(NULL, " ");
-			}
-			// for(int l = 0; l< k; l++){
-			// 	printf("%d. %s\n", l, trim(tokens[l]));
-			// }
-			execute_cmd(tokens[0],tokens);
-		}		
-	}
+	const char ps1 []= "$: ";
+	char* input_buffer;
+	char* commands[MAX_CMD];
+	char* tokens[MAX_CMD];
+	int wstatus;
+	int ntokens;
+	int ncmds;
 
+	pid_t child_pid;
+	
+	while(true){
+		ntokens = ncmds =0;
+		input_buffer = (char *)malloc(MAX_BF);
+		if(write(STDOUT_FILENO, ps1, sizeof(ps1)-1)==-1){
+			perror("write Error");
+			exit(1);
+		}
+		if(read(STDIN_FILENO, input_buffer, MAX_BF) ==-1){
+			perror("Read Error");
+			exit(1);
+		} 
+		commands[ncmds] = strtok(input_buffer, "|");
+		while(commands[ncmds] != NULL){
+			commands[++ncmds] = strtok(NULL, "|");
+		}
+		if(ncmds > 1){
+			//launch in pipe
+			
+			execute_pipe()
+		}
+		else{
+			commands[0] = trim(commands[0]);
+			ntokens = tokenize(commands[0], tokens);
+			if((child_pid = fork())==0){
+				execute_cmd(tokens[0],tokens);
+			}
+			else{
+				do{
+					waitpid(child_pid, &wstatus, WUNTRACED);
+			 	}while (!WIFEXITED(wstatus) && !WIFSIGNALED(wstatus));
+			}
+		}
+	}
 	return 0;
 }
