@@ -40,6 +40,7 @@ int main(int argc, char const *argv[]){
 			execute_non_pipe(commands);
 		}
 		//clear mem
+		// free(input_buffer);
 	}
 	return 0;
 }

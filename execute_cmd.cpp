@@ -25,6 +25,7 @@ void execute_cmd(char *file, char *argv[]){
 	else if(strcmp(argv[0],"pwd")==0){
 		char * pwd_s = trim(pwd_fn());
 		printf("%s", pwd_s);
+		return;
 		// if(write(STDOUT_FILENO, pwd_s, MAX_BF)==-1){
 		// 	perror("--execute_cmd: write Error");
 		// 	exit(1);
@@ -61,25 +62,51 @@ void execute_non_pipe(char* commands[]){
 		while (!WIFEXITED(wstatus) && !WIFSIGNALED(wstatus));
 	}
 }
+
 void execute_pipe(char* commands[], int ncmds){
 	int wstatus;
 	pid_t child_pid;
 	int ntokens;
 	char* tokens[MAX_CMD];
-	int p[2];
-	
-	for(int i=0; i<ncmds; i++){
+	int i;
+	// printf("Number of commands: %d\n", ncmds);
+	int fd0, fd1;
+	fd0= STDIN_FILENO;
+	for(i=0; i<ncmds; i++){
 		commands[i] = trim(commands[i]);
 		ntokens = tokenize(commands[i], tokens);
-		
-		if((child_pid = fork())==0){
-			execute_cmd(tokens[i], tokens);
+		int p[2];
+		if(i < ncmds-1){
+			pipe(p);
+			fd1=p[1];
 		}
 		else{
-	//		do{
-				waitpid(child_pid, &wstatus, 0);	
-	//		}
-	//		while (!WIFEXITED(wstatus) && !WIFSIGNALED(wstatus));
+			fd1 = STDOUT_FILENO;
 		}
+		// printf("Command %d: %s\n",i, commands[i]);
+		// printf("Number of tokens: %d\n", ntokens);
+		// for(int j=0; j<ntokens; j++){
+		// 	printf("\tToken %d: %s\n",j, tokens[j] );
+		// }
+
+		if((child_pid = fork())==0){
+			if(fd0 != STDIN_FILENO){
+				dup2(fd0, STDIN_FILENO);
+				close(fd0);
+			}
+			if(fd1 != STDOUT_FILENO){
+				dup2(fd1, STDOUT_FILENO);
+				close(fd1);
+			}
+			execute_cmd(tokens[0], tokens);
+		}
+		if(fd0 != STDIN_FILENO) close(fd0);
+		if(fd1 != STDOUT_FILENO) close(fd1);
+		fd0 = p[0];
 	}
+	wait(NULL);
+
+	// dup2(1, STDOUT_FILENO);
+	//execute_cmd(tokens[i], tokens);
+	//abort();
 }
